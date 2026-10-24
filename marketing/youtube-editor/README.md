@@ -1,8 +1,9 @@
 # youtube-editor
 
 A YouTube video editing agent built for precision. It decides **what** to cut the way an editor
-would, and hands **where** to five stdlib tools on ffmpeg that cut to the exact frame and audio
-sample. Then it checks the render. Nothing is reported as done until the verifier passes.
+would, and hands **where** to six stdlib tools on ffmpeg that cut to the exact frame and audio
+sample, add transitions and effects, and then check the render. Nothing is reported as done
+until the verifier passes.
 
 ```text
 raw.mp4 ──probe/analyze──▶ proposed cuts ──you approve──▶ edl.json
@@ -42,6 +43,19 @@ python3 $S/timeline_remapper.py chapters plan.json chapters.txt
 python3 $S/timeline_remapper.py captions plan.json --words words.json -o final.srt
 ```
 
+## Transitions and effects
+
+| Kind | Options |
+|---|---|
+| Transitions | `cut` (default), `fade`, `dissolve`, `fadeblack`, `fadewhite`, wipes, slides, `circleopen`, `zoomin` and the rest of ffmpeg's 50+ `xfade` styles. Set a default and override per cut |
+| Local effects (source-timed) | `zoom` punch-in, `text` overlay, `blur` region |
+| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), burned-in `captions` (`youtube` / `shorts` style), `music` bed with voice ducking, `fade_in`, `fade_out` |
+
+Each one is verified at the frame level. Effects must be **on** at their first and last frame
+and **off** just outside, and transition frames must be blends of both pieces. Burned captions
+are re-rendered onto the source frames at the matching output time and compared. See
+`skills/youtube-editor/references/effects_and_transitions.md`.
+
 ## What "top precision" means here, in checks
 
 | Check | Measured result on the test suite |
@@ -54,8 +68,11 @@ python3 $S/timeline_remapper.py captions plan.json --words words.json -o final.s
 | A/V end sync | ≤ 0.13 ms |
 | Loudness | −14 LUFS ±1, true peak ≤ −1 dBTP (+0.5 tolerance after AAC) |
 
-The verifier ships two negative controls in `edit_verifier.py --sample` — the same render checked
-against a plan shifted by one frame, and a render with audio 10 ms late. Both must FAIL, and do.
+`edit_verifier.py --sample` runs four negative controls that must FAIL, and do:
+- the same render checked against a plan shifted by one frame
+- a render with audio 10 ms late
+- a zoom window claimed 2 frames later than rendered
+- a hard cut rendered where the plan says crossfade
 
 ## Design decisions
 
@@ -66,12 +83,15 @@ against a plan shifted by one frame, and a render with audio 10 ms late. Both mu
 - **Audio follows video.** Each piece's sample count comes from the output frame timeline, so
   rounding never accumulates however many cuts there are. Leading silence is inserted when a
   source's audio starts after its video.
-- **Short fades, not crossfades.** A 12 ms fade at each cut removes clicks without changing length.
-  A crossfade would shorten the audio and break the frame lock.
+- **Short fades at hard cuts; planned crossfades for transitions.** A 12 ms fade at each hard cut
+  removes clicks without changing length. A transition is a planned overlap: the timeline is
+  shortened by exactly its frames, and the audio crossfade spans exactly the same samples.
 - **Honest uncertainty.** Static shots and held tones are reported `AMBIGUOUS`, not passed.
 - **Bugs the verifier caught during the build** are now regression cases: a duplicated frame after
-  seeking in raw output, audio landing 278 ms early when a source's audio starts late, and
-  dynamic-mode loudnorm adding 27 ms and overshooting true peak.
+  seeking in raw output, audio landing 278 ms early when a source's audio starts late,
+  dynamic-mode loudnorm adding 27 ms and overshooting true peak, ffmpeg's `acrossfade` adding
+  256 samples (5 ms) per crossfade, and `concat` breaking a following `xfade` with a mismatched
+  timebase.
 
 ## Scope
 

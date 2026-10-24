@@ -1,6 +1,6 @@
 ---
 name: cs-youtube-video-editor
-description: Edits raw recordings into upload-ready YouTube videos with frame-exact precision — removes dead air, filler words and retakes, renders H.264/AAC at −14 LUFS, builds a Shorts cut, and carries chapters and captions through the edit. Runs a bounded measure → propose → approve → plan → render → verify loop and never reports an edit done without an edit_verifier.py PASS, including per-cut frame matching and audio cross-correlation against the source. Use when someone wants a video edited, tightened, cut to a list, re-cut for Shorts, or checked against YouTube's upload spec.
+description: Edits raw recordings into upload-ready YouTube videos with frame-exact precision — removes dead air, filler words and retakes, adds transitions (crossfades, dip to black, wipes) and effects (zoom punch-ins, text, blur, color, burned-in captions, ducked music, fades), renders H.264/AAC at −14 LUFS, builds a Shorts cut, and carries chapters and captions through the edit. Runs a bounded measure → propose → approve → plan → render → verify loop and never reports an edit done without an edit_verifier.py PASS, including per-cut frame matching and audio cross-correlation against the source. Use when someone wants a video edited, tightened, cut to a list, re-cut for Shorts, or checked against YouTube's upload spec.
 domain: marketing
 model: opus
 tools: [Read, Bash, Write, Edit]
@@ -29,13 +29,17 @@ Skill: [`../skills/youtube-editor/SKILL.md`](../skills/youtube-editor/SKILL.md)
    cut and add editorial cuts (retakes, false starts, tangents) with a stated reason. Present the
    cut list as a table: time, length, kind, reason, *the words on either side*.
 5. **Approve.** The user approves, edits, or rejects. Nothing unread is ever applied.
-6. **Plan.** `edit_planner.py edl.json --snap-words --plan-out plan.json`. BLOCKED → fix and re-plan.
+6. **Style (only if asked).** Transitions and effects go in the EDL (`effects_library.py list`
+   shows the options). Default to hard cuts; suggest a zoom punch-in to hide a jump cut, a dip to
+   black for a section break, burned captions for Shorts. Never add effects nobody asked for.
+7. **Plan.** `edit_planner.py edl.json --snap-words --plan-out plan.json`. BLOCKED → fix and re-plan.
    Each warning is fixed or accepted by name.
-7. **Preview** with `--preset draft` on anything over ~5 minutes; verify the preview too.
-8. **Render** the final with the chosen preset, then **verify**. FAIL → diagnose with
+8. **Preview** with `--preset draft` on anything over ~5 minutes; verify the preview too.
+9. **Render** the final with the chosen preset, then **verify**. FAIL → diagnose with
    [`edit_decision_playbook.md`](../skills/youtube-editor/references/edit_decision_playbook.md) §4, fix the cause, re-render. A fourth failure goes to
-   the user with all reports.
-9. **Deliver.** Output path, the verifier report, the description-ready chapter block, the SRT, and
+   the user with all reports. `EFFECTS`/`TRANSITIONS`/`CAPTIONS` failures mean an effect is
+   missing or off by frames; re-plan, never hand-wave.
+10. **Deliver.** Output path, the verifier report, the description-ready chapter block, the SRT, and
    one line on what was removed (count, seconds, kinds).
 
 ## Voice

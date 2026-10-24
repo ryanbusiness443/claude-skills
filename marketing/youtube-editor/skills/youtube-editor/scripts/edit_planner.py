@@ -44,6 +44,7 @@ import tempfile
 from fractions import Fraction
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import effects_library as fx  # noqa: E402
 import ytedit_core as core  # noqa: E402
 
 PRESETS = {
@@ -56,7 +57,7 @@ PRESETS = {
     "youtube-4k": {"size": (3840, 2160), "crf": 18, "x264": "slow", "audio_kbps": 384},
     "youtube-shorts": {"size": (1080, 1920), "crf": 18, "x264": "slow", "audio_kbps": 384,
                        "fill": "crop", "max_duration_s": 180},
-    "draft": {"size": (1280, 720), "crf": 28, "x264": "veryfast", "audio_kbps": 128,
+    "draft": {"size": (1280, 720), "crf": 28, "x264": "veryfast", "audio_kbps": 192,
               "note": "fast preview; not for upload"},
 }
 
@@ -138,7 +139,8 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
             _finding(findings, "warn", "CLAMPED", "segment %d end %s clamped to source end %s"
                      % (i, core.fmt_ts(b), core.fmt_ts(duration)))
             b = duration
-        ranges.append({"a": a, "b": b, "label": label, "i": i})
+        ranges.append({"a": a, "b": b, "label": label, "i": i,
+                       "transition": seg.get("transition")})
 
     if mode == "keep" and [r["i"] for r in ranges] != [r["i"] for r in sorted(ranges, key=lambda r: r["a"])]:
         if not edl.get("allow_reorder"):
@@ -161,13 +163,15 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
 
     # 2. Convert cut mode into keep ranges.
     if mode == "cut":
-        keeps, cursor = [], Fraction(0)
+        # A cut's "transition" applies to the join it creates, i.e. into the
+        # keep that follows it.
+        keeps, cursor, pending = [], Fraction(0), None
         for r in ranges:
             if r["a"] - cursor > 0:
-                keeps.append({"a": cursor, "b": r["a"], "label": "", "cut_after": r["label"]})
-            cursor = r["b"]
+                keeps.append({"a": cursor, "b": r["a"], "label": "", "transition": pending})
+            cursor, pending = r["b"], r.get("transition")
         if duration - cursor > 0:
-            keeps.append({"a": cursor, "b": duration, "label": ""})
+            keeps.append({"a": cursor, "b": duration, "label": "", "transition": pending})
         cut_lengths = [r["b"] - r["a"] for r in ranges]
         for r, length in zip(ranges, cut_lengths):
             if length * fps < 3:
@@ -222,7 +226,8 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
                          "keep range %s-%s is shorter than one frame"
                          % (core.fmt_ts(r["a"]), core.fmt_ts(r["b"])))
             continue
-        segments.append({"src_start_frame": fa, "src_end_frame": fb, "label": r["label"]})
+        segments.append({"src_start_frame": fa, "src_end_frame": fb, "label": r["label"],
+                         "trans_req": r.get("transition")})
 
     # Merge keeps that became contiguous after snapping (no cut between them).
     joined = []
@@ -237,16 +242,16 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
     if not segments:
         _finding(findings, "block", "EMPTY_RESULT", "the edit leaves nothing to render")
 
-    # 4. Output timeline + sample-exact audio boundaries derived from it.
+    # 4. Output timeline (transitions overlap pieces) + sample-exact audio
+    #    boundaries derived from it.
     sr = audio["sample_rate"] if audio else 0
     a_start = core.to_fraction(audio["start_time"]) if audio else Fraction(0)
-    out_frame = 0
     for idx, s in enumerate(segments):
-        n = s["src_end_frame"] - s["src_start_frame"]
         s["index"] = idx
-        s["frames"] = n
-        s["out_start_frame"] = out_frame
-        s["out_end_frame"] = out_frame + n
+    total_frames = fx.apply_transitions(segments, edl, fps, findings)
+    for idx, s in enumerate(segments):
+        n = s["frames"]
+        out_frame = s["out_start_frame"]
         s["src_start"] = core.fmt_ts(core.frame_time(s["src_start_frame"], fps), 6)
         s["src_end"] = core.fmt_ts(core.frame_time(s["src_end_frame"], fps), 6)
         s["out_start"] = core.fmt_ts(core.frame_time(out_frame, fps), 6)
@@ -265,12 +270,12 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
             _finding(findings, "warn", "MICRO_KEEP",
                      "kept piece %d (%s) is only %d frames — reads as a flash frame"
                      % (idx, s["src_start"], n), "extend it or cut it")
-        out_frame += n
+    out_frame = total_frames
 
     if max_snap:
         _finding(findings, "info", "SNAPPED",
-                 "largest boundary snap: %.3f ms (nearest-snap bound is half a frame, %.3f ms; "
-                 "word-safe snaps move outward up to one frame)"
+                 "largest boundary snap: %.3f ms (nearest-snap bound is half a frame, "
+                 "%.3f ms; word-safe snaps move outward up to one frame)"
                  % (float(max_snap) * 1000, float(Fraction(1, 2) / fps) * 1000))
 
     out_cfg = dict(edl.get("output") or {})
@@ -284,6 +289,8 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
     if max_d and total_dur > max_d:
         _finding(findings, "block", "TOO_LONG",
                  "%s output must be <= %ss; this edit is %.2fs" % (preset, max_d, float(total_dur)))
+
+    effects = fx.plan_effects(edl, segments, out_frame, fps, edl_dir, findings)
 
     audio_cfg = dict(edl.get("audio") or {})
     audio_cfg.setdefault("crossfade_ms", 12)
@@ -314,6 +321,8 @@ def build_plan(edl, edl_dir=".", words_path=None, snap_words=False, min_keep_fra
         "audio": audio_cfg,
         "output": out_cfg,
         "words": wpath and os.path.abspath(wpath),
+        "transition_default": edl.get("transition") or "cut",
+        "effects": effects,
         "findings": findings,
     }
 
@@ -325,9 +334,15 @@ def print_text(plan):
         len(plan["segments"]), plan["total_frames"], plan["expected_duration_ts"],
         plan["removed_s"]))
     for s in plan["segments"][:60]:
-        print("  #%-3d src %s -> %s (frames %d-%d)  out @ %s  %d fr" % (
+        trans = "" if not s.get("trans_in_frames") else "  <- %s %d fr" % (
+            s["trans_in_type"], s["trans_in_frames"])
+        print("  #%-3d src %s -> %s (frames %d-%d)  out @ %s  %d fr%s" % (
             s["index"], s["src_start"], s["src_end"], s["src_start_frame"],
-            s["src_end_frame"] - 1, s["out_start"], s["frames"]))
+            s["src_end_frame"] - 1, s["out_start"], s["frames"], trans))
+    for e in plan.get("effects", []):
+        span = "" if "out_start_frame" not in e else " out frames %d-%d" % (
+            e["out_start_frame"], e["out_end_frame"] - 1)
+        print("  effect %s%s" % (e["type"], span))
     if len(plan["segments"]) > 60:
         print("  ... %d more" % (len(plan["segments"]) - 60))
     for f in plan["findings"]:

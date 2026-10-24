@@ -1,6 +1,6 @@
 ---
 name: "cs-youtube-verify"
-description: "/cs-youtube-verify — Prove a render matches its edit plan: exact frame count, per-cut frame matching against the source, audio cross-correlation, A/V sync, −14 LUFS loudness, and YouTube upload spec. PASS/FAIL with the cause of every failure."
+description: "/cs-youtube-verify — Prove a render matches its edit plan: exact frame count, per-cut frame matching against the source, audio cross-correlation, transitions, effect edge frames, burned captions, A/V sync, −14 LUFS loudness, and YouTube upload spec. PASS/FAIL with the cause of every failure."
 argument-hint: "[plan.json] [rendered.mp4]"
 ---
 
@@ -27,4 +27,4 @@ argument-hint: "[plan.json] [rendered.mp4]"
 ## What you get
 
 A PASS/FAIL table — `FRAME_COUNT`, `FRAME_RATE`, `DURATION`, `AV_SYNC`, `AUDIO_ALIGN`,
-`CUT_FRAMES`, `LOUDNESS`, `UPLOAD_SPEC` — and, for every failure, the likely cause and fix.
+`CUT_FRAMES`, `TRANSITIONS`, `EFFECTS`, `CAPTIONS`, `FADES`, `LOUDNESS`, `UPLOAD_SPEC` — and, for every failure, the likely cause and fix.

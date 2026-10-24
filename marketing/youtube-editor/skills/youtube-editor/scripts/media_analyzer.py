@@ -96,8 +96,8 @@ def analyze(path, noise_db=-35.0, min_silence=0.5, scene=0.35, black=0.5):
             "count": len(kfs),
             "max_gap_s": core.fsec(max(gaps), 3) if gaps else None,
             "mean_gap_s": core.fsec(sum(gaps, Fraction(0)) / len(gaps), 3) if gaps else None,
-            "note": "A stream-copy cut can only start on a keyframe, so it can land up to "
-                    "max_gap_s early. The renderer re-encodes to cut on the exact frame.",
+            "note": "A stream-copy cut can only start on a keyframe, so it can land "
+                    "up to max_gap_s early. The renderer re-encodes to cut on the exact frame.",
         },
         "params": {"noise_db": noise_db, "min_silence": min_silence,
                    "scene_threshold": scene, "black_min": black},
@@ -172,8 +172,8 @@ def propose(path, words=None, noise_db=-35.0, min_silence=0.6, pad=0.15,
                     "source_s": core.fsec(duration, 3),
                     "result_s": core.fsec(duration - removed, 3)},
         "notes": notes,
-        "review": "PROPOSAL ONLY. Read every cut before planning; delete any that remove "
-                  "a deliberate pause, a punchline beat, or content.",
+        "review": "PROPOSAL ONLY. Read every cut before planning; delete any that "
+                  "remove a deliberate pause, a punchline beat, or content.",
     }
     if words:
         edl["words_used"] = True

@@ -44,8 +44,8 @@ How the tools get cuts exactly right, and the traps they are built to avoid. Con
   accumulates, however many cuts there are. Tested: beeps at known times land within one sample after
   three cuts and a 44.1 → 48 kHz resample.
 - 🟢 Cutting a waveform mid-cycle creates a step discontinuity, heard as a click. Each internal cut gets
-  a short fade out/in (default 12 ms). Fades keep the length exact; a true crossfade (`acrossfade`) would
-  shorten the audio and break the frame lock, so it is not used.
+  a short fade out/in (default 12 ms). Fades keep the length exact. A transition is different: it is a
+  planned overlap, and the timeline shrinks by exactly its frames (see `effects_and_transitions.md`).
 - 🟢 Lip-sync detectability (ITU-R BT.1359): roughly 45 ms audio-early or 125 ms audio-late. The verifier
   holds output A/V to one frame (33 ms at 30 fps), well inside that window.
 

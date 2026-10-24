@@ -271,7 +271,8 @@ def probe(path):
         if vfr:
             info["warnings"].append(
                 "VFR_SUSPECTED: r_frame_rate %s differs from avg_frame_rate %s; frame "
-                "numbers do not map linearly to time. The renderer conforms to CFR first."
+                "numbers do not map linearly to time. The renderer conforms to CFR "
+                "first."
                 % (video.get("r_frame_rate"), video.get("avg_frame_rate")))
         if video.get("field_order") not in (None, "progressive", "unknown"):
             info["warnings"].append(
@@ -293,8 +294,8 @@ def probe(path):
             info["audio"]["offset_vs_video"] = frac_str(offset)
             if offset != 0:
                 info["warnings"].append(
-                    "AV_START_OFFSET: audio starts %+.6fs relative to video; the renderer "
-                    "compensates sample-exactly." % float(offset))
+                    "AV_START_OFFSET: audio starts %+.6fs relative to video; the "
+                    "renderer compensates sample-exactly." % float(offset))
     if not video:
         info["warnings"].append("NO_VIDEO: audio-only input; frame snapping uses 1 ms ticks.")
     return info
@@ -339,6 +340,22 @@ def keyframes(path, limit=100000):
     return times
 
 
+def measure_loudness(path):
+    """EBU R128 integrated loudness, true peak and LRA of the first audio stream."""
+    ffmpeg, _ = require_ffmpeg()
+    err = run([ffmpeg, "-hide_banner", "-nostdin", "-i", path, "-map", "0:a:0", "-af",
+               "ebur128=peak=true", "-f", "null", "-"]).stderr.decode("utf-8", "replace")
+    summary = err[err.rfind("Summary:"):]
+    out = {}
+    for key, pat in (("integrated_lufs", r"I:\s+(-?[\d.]+) LUFS"),
+                     ("true_peak_dbtp", r"Peak:\s+(-?[\d.]+|-inf) dBFS"),
+                     ("lra_lu", r"LRA:\s+([\d.]+) LU")):
+        m = re.search(pat, summary)
+        if m:
+            out[key] = None if m.group(1) == "-inf" else float(m.group(1))
+    return out
+
+
 # --------------------------------------------------------------------------
 # Raw frame access (for boundary verification)
 # --------------------------------------------------------------------------
@@ -346,13 +363,14 @@ def keyframes(path, limit=100000):
 THUMB_W, THUMB_H = 64, 36
 
 
-def grab_frames(path, first_frame, count, fps, start_time=Fraction(0)):
+def grab_frames(path, first_frame, count, fps, start_time=Fraction(0), size=None):
     """Decode `count` frames starting at frame index `first_frame` as tiny gray thumbs.
 
     Input seeking lands half a frame before the target so ffmpeg's accurate
     seek emits exactly frame `first_frame` first, regardless of keyframes.
-    Returns a list of bytes objects (THUMB_W*THUMB_H each).
+    Returns a list of bytes objects (THUMB_W*THUMB_H each, or size[0]*size[1]).
     """
+    tw, th = size or (THUMB_W, THUMB_H)
     ffmpeg, _ = require_ffmpeg()
     first_frame = max(0, first_frame)
     seek = Fraction(0) if first_frame == 0 else (Fraction(first_frame) - Fraction(1, 2)) / fps
@@ -360,11 +378,11 @@ def grab_frames(path, first_frame, count, fps, start_time=Fraction(0)):
     if seek > 0:
         cmd += ["-ss", "%.9f" % float(seek)]
     cmd += ["-i", path, "-map", "0:v:0", "-fps_mode", "passthrough", "-frames:v", str(count), "-vf",
-            "scale=%d:%d:flags=area,format=gray" % (THUMB_W, THUMB_H),
+            "scale=%d:%d:flags=area,format=gray" % (tw, th),
             "-f", "rawvideo", "-"]
     raw = run(cmd).stdout
-    size = THUMB_W * THUMB_H
-    return [raw[i:i + size] for i in range(0, len(raw) - size + 1, size)]
+    n = tw * th
+    return [raw[i:i + n] for i in range(0, len(raw) - n + 1, n)]
 
 
 def mad(a, b):

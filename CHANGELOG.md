@@ -21,8 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   spec, with two negative controls that must fail) and `timeline_remapper.py` (chapters under YouTube's
   rules, captions, timestamps). Three bugs the verifier caught during the build (a duplicated frame
   after seeking, audio landing early when a source's audio starts after its video, and loudnorm
-  changing length) are fixed and covered. **Counters:** skills 398 → 399; tools 766 → 772; refs
-  877 → 880; agents 123 → 124; commands 157 → 159; plugins 104 → 105.
+  changing length) are fixed and covered.
+- **`youtube-editor` transitions and effects** — new `effects_library.py` (list/check CLI shared by the
+  planner, renderer and verifier). 50+ `xfade` transitions (default plus per-cut override) that
+  shorten the timeline by exactly their overlap, with sample-exact audio crossfades; local effects
+  (`zoom` punch-in, `text`, `blur`) in source time and gated by frame number; global `color`, `lut`,
+  burned-in `captions`, voice-ducked `music`, `fade_in`/`fade_out`. The verifier adds `TRANSITIONS`,
+  `EFFECTS` (on at the first/last frame, off just outside), `CAPTIONS` and `FADES`, and its
+  `--sample` now runs four negative controls. Audio is encoded first and its true peak re-measured,
+  tightening a 4×-oversampled limiter if the AAC encode overshot. Bugs caught while building it:
+  ffmpeg's `acrossfade` adds 256 samples per crossfade (replaced), `concat` breaks a following `xfade`
+  with a mismatched timebase (fixed), and a 64 kbps draft preset could not meet its own true-peak
+  check (raised to 192 kbps).
+  **Counters:** skills 398 → 399; tools 766 → 773; refs 877 → 881; agents 123 → 124; commands
+  157 → 159; plugins 104 → 105.
 
 ## [2.14.0] - 2026-10-21 — Audit skills, open-source YouTube and plugin-name fixes
 

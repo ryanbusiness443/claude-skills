@@ -165,7 +165,7 @@ def load_cues(path):
         text = fh.read().replace("\r\n", "\n")
     cues = []
     for block in re.split(r"\n\s*\n", text):
-        lines = [l for l in block.split("\n") if l.strip()]
+        lines = [ln for ln in block.split("\n") if ln.strip()]
         for i, line in enumerate(lines):
             m = _SRT_TIME.search(line)
             if m:
@@ -205,7 +205,7 @@ def remap_cues(plan, cues, min_len=Fraction(1, 10)):
 
 
 def cues_from_words(plan, words, max_chars=42, max_lines=2, max_s=Fraction(6), gap_s=Fraction(3, 5)):
-    """Build caption cues from kept words only (removed fillers vanish from the text)."""
+    """Build caption cues from kept words only (removed fillers leave the text)."""
     tl = Timeline(plan)
     kept = []
     for w in words:
