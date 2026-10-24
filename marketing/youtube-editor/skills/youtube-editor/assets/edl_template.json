@@ -1,0 +1,16 @@
+{
+  "source": "raw.mp4",
+  "mode": "cut",
+  "words": "words.json",
+  "segments": [
+    {"start": "00:00:00.000", "end": "00:00:03.200", "label": "camera settling before the intro"},
+    {"start": "00:01:12.480", "end": "00:01:13.120", "label": "filler 'um' + pause"},
+    {"start": "00:04:05.000", "end": "00:04:31.750", "label": "retake: keep the second take"},
+    {"start": "00:09:58:12", "end": "00:10:00:00", "label": "SMPTE timecode also works (needs fps)"}
+  ],
+  "audio": {
+    "crossfade_ms": 12,
+    "loudness": {"target_lufs": -14.0, "true_peak_db": -1.0, "lra": 11.0}
+  },
+  "output": {"preset": "youtube"}
+}

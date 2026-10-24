@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`marketing/youtube-editor`** — a frame-accurate YouTube video editing agent (`cs-youtube-video-editor`,
+  `/cs-youtube-edit`, `/cs-youtube-verify`) that proves its cuts. The agent makes the editorial calls
+  with user approval; five stdlib tools on ffmpeg do the cutting: `media_analyzer.py` (probe, silence /
+  black / scene / EBU R128 analysis, padded word-safe cut proposals), `edit_planner.py` (EDL → plan with
+  exact rational frame math, drop-frame SMPTE, `MID_WORD` guard, audio boundaries derived from the output
+  frame timeline), `render_engine.py` (one decode pass by frame and sample index, never stream copy;
+  two-pass loudness to −14 LUFS / −1 dBTP with a delay-compensated limiter fallback; YouTube's
+  recommended H.264/AAC/faststart settings; Shorts preset), `edit_verifier.py` (exact frame count,
+  per-cut frame matching, per-piece audio cross-correlation within 1 ms, A/V sync, loudness, upload
+  spec, with two negative controls that must fail) and `timeline_remapper.py` (chapters under YouTube's
+  rules, captions, timestamps). Three bugs the verifier caught during the build (a duplicated frame
+  after seeking, audio landing early when a source's audio starts after its video, and loudnorm
+  changing length) are fixed and covered. **Counters:** skills 398 → 399; tools 766 → 772; refs
+  877 → 880; agents 123 → 124; commands 157 → 159; plugins 104 → 105.
+
 ## [2.14.0] - 2026-10-21 — Audit skills, open-source YouTube and plugin-name fixes
 
 Three new plugins from the October audit's new-skill proposals, an open-source-first YouTube

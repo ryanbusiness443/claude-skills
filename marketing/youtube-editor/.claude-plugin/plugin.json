@@ -1,0 +1,15 @@
+{
+  "name": "youtube-editor",
+  "description": "Frame-accurate YouTube video editing agent with proof. The cs-youtube-video-editor agent makes the editorial calls (dead air, filler words, retakes, must-keep beats) and five stdlib tools on top of ffmpeg do the cutting to the exact frame and audio sample: media_analyzer.py probes rational frame rates, VFR, interlacing and A/V offsets, measures silence/black/scenes/EBU R128 loudness, and proposes a padded, word-safe cut list; edit_planner.py compiles an EDL (seconds, timecode, SMPTE incl. drop-frame, or frame numbers) into a plan where every cut is snapped to a real frame, no cut lands inside a spoken word, and audio boundaries derive from the output frame timeline so drift cannot accumulate; render_engine.py renders in one decode pass by frame index and sample index (never keyframe-snapping stream copy) with two-pass loudnorm to -14 LUFS / -1 dBTP and YouTube's recommended H.264 High / closed-GOP / AAC 48 kHz / faststart settings, plus Shorts (9:16, 3 min cap); edit_verifier.py refuses to call an edit done until the output frame count matches exactly, the frame after every cut matches the intended source frame, audio cross-correlates within 1 ms per piece, A/V sync, loudness and upload spec all pass, with built-in negative controls; timeline_remapper.py carries chapters (enforcing YouTube's 0:00 / 3-chapter / 10-second rules) and captions through the edit. No uploads, no API keys, never touches the source file.",
+  "version": "2.14.0",
+  "author": {
+    "name": "Alireza Rezvani",
+    "url": "https://alirezarezvani.com"
+  },
+  "homepage": "https://github.com/alirezarezvani/claude-skills/tree/main/marketing/youtube-editor",
+  "repository": "https://github.com/alirezarezvani/claude-skills",
+  "license": "MIT",
+  "skills": [
+    "./skills/youtube-editor"
+  ]
+}

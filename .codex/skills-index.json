@@ -3,7 +3,7 @@
   "name": "claude-code-skills",
   "description": "Production-ready skill packages for AI agents - Marketing, Engineering, Product, C-Level, PM, and RA/QM",
   "repository": "https://github.com/alirezarezvani/claude-skills",
-  "total_skills": 397,
+  "total_skills": 398,
   "skills": [
     {
       "name": "agent-launcher-orchestrator",
@@ -1944,6 +1944,12 @@
       "description": "X/Twitter growth engine for building audience, crafting viral content, and analyzing engagement. Use when the user wants to grow on X/Twitter, write tweets or threads, analyze their X profile, research competitors on X, plan a posting strategy, or optimize engagement. Complements social-content (generic multi-platform) with X-specific depth: algorithm mechanics, thread engineering, reply strategy, profile optimization, and competitive intelligence via web search."
     },
     {
+      "name": "youtube-editor",
+      "source": "../../marketing/youtube-editor/skills/youtube-editor",
+      "category": "marketing",
+      "description": "Frame-accurate YouTube video editing agent: cuts silences, filler words and retakes, renders an upload-ready MP4, and proves every cut landed on the exact frame before calling it done. Use when the user wants a raw recording edited for YouTube, dead air or 'um's removed, a cut list applied precisely, a Shorts version, chapters or captions carried through an edit, or a render checked against YouTube's upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
+    },
+    {
       "name": "youtube-full",
       "source": "../../marketing-skill/skills/youtube-full",
       "category": "marketing",
@@ -2440,7 +2446,7 @@
       "description": "Financial analysis, valuation, and forecasting skills"
     },
     "marketing": {
-      "count": 57,
+      "count": 58,
       "source": "../../marketing-skill",
       "description": "Marketing, content, and demand generation skills"
     },
