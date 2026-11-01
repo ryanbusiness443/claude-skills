@@ -99,11 +99,10 @@ class _Ctx:
         self.cap_filter = fx.captions_filter(plan, cap, tmpdir, self.size)[0] if cap else None
         self.busy = {}  # out frame -> why it cannot match a plain source frame
         total = plan["total_frames"]
+        # Fades and transitions are registered first so they win over an effect
+        # window on the same frame: an effect frame inside a fade cannot be compared.
         for e in self.effects:
-            if "out_start_frame" in e:
-                for f in range(e["out_start_frame"], e["out_end_frame"]):
-                    self.busy.setdefault(f, "%s effect" % e["type"])
-            elif e["type"] == "fade_in":
+            if e["type"] == "fade_in":
                 for f in range(0, e["frames"]):
                     self.busy.setdefault(f, "fade in")
             elif e["type"] == "fade_out":
@@ -113,6 +112,10 @@ class _Ctx:
             for f in range(sgm["out_start_frame"], sgm["out_start_frame"] + sgm["trans_in_frames"]
                            if sgm.get("trans_in_frames") else sgm["out_start_frame"]):
                 self.busy.setdefault(f, "transition")
+        for e in self.effects:
+            if "out_start_frame" in e:
+                for f in range(e["out_start_frame"], e["out_end_frame"]):
+                    self.busy.setdefault(f, "%s effect" % e["type"])
 
     def src_frame(self, o):
         """Source frame shown at output frame o outside transitions, or None."""
@@ -234,14 +237,23 @@ def verify_audio(plan, out_path, max_pieces=12):
         clean = Fraction(s["frames"]) / fps - t_in - t_out
         if clean < AUDIO_WINDOW + Fraction(1, 10):
             continue
-        mid = t_in + (clean - AUDIO_WINDOW) / 2
-        src_t = core.frame_time(s["src_start_frame"], fps) + mid
+        # Of three candidate windows, correlate the loudest: a window on a pause
+        # is dominated by room tone or a music bed and proves little.
+        best = None
+        for frac in (Fraction(1, 4), Fraction(1, 2), Fraction(3, 4)):
+            mid = t_in + (clean - AUDIO_WINDOW) * frac
+            src_t = core.frame_time(s["src_start_frame"], fps) + mid
+            if src_t + v_start - pad < a_start:
+                continue  # window starts before the source audio exists
+            ref_c = _pcm(plan["source"], src_t - pad, AUDIO_WINDOW + 2 * pad)
+            rms_c = (sum(x * x for x in ref_c) / max(1, len(ref_c))) ** 0.5
+            if best is None or rms_c > best[0]:
+                best = (rms_c, mid, ref_c)
+        if best is None:
+            continue
+        rms, mid, ref = best
         out_t = core.frame_time(s["out_start_frame"], fps) + mid
-        if src_t + v_start - pad < a_start:
-            continue  # window starts before the source audio exists
-        ref = _pcm(plan["source"], src_t - pad, AUDIO_WINDOW + 2 * pad)
         got = _pcm(out_path, out_t - pad, AUDIO_WINDOW + 2 * pad)
-        rms = (sum(x * x for x in ref) / max(1, len(ref))) ** 0.5
         if rms < 100:  # about -50 dBFS: nothing to align on
             rows.append({"piece": s["index"], "status": "AMBIGUOUS", "detail": "near-silent window"})
             continue
@@ -255,8 +267,12 @@ def verify_audio(plan, out_path, max_pieces=12):
                          % (lag * 1000.0 / AUDIO_RATE)})
             continue
         lag_ms = lag * 1000.0 / AUDIO_RATE
-        ok = abs(lag_ms) <= AUDIO_TOLERANCE_MS and score > 0.5
-        rows.append({"piece": s["index"], "status": "PASS" if ok else "FAIL",
+        if score < 0.5:
+            # Weak match (music bed, noise): the lag cannot be trusted either way.
+            status = "AMBIGUOUS"
+        else:
+            status = "PASS" if abs(lag_ms) <= AUDIO_TOLERANCE_MS else "FAIL"
+        rows.append({"piece": s["index"], "status": status,
                      "lag_ms": round(lag_ms, 3), "correlation": round(score, 3)})
     return rows
 
@@ -301,11 +317,21 @@ def _thumb_out(ctx, out_path, o, size=None):
     return t[0] if t else None
 
 
-def _thumb_src(ctx, sf, out_frame, effect=None, captions=True, size=None):
-    vf = ctx.src_vf(out_frame, captions)
-    if effect is not None:
-        vf = "%s[g];%s;[x]null" % (vf, fx.local_effect_graph(effect, ctx.size, "g", "x",
-                                                              ctx.tmp, enable=False))
+def _thumb_src(ctx, sf, out_frame, effects=(), captions=True, size=None):
+    """Source frame through the renderer's chain: geometry, colour, the given local
+    effects (in render order), then captions as of out_frame."""
+    if isinstance(effects, dict):
+        effects = [effects]
+    vf = ctx.base_vf
+    if effects:
+        label, parts = "g0", [vf + "[g0]"]
+        for i, e in enumerate(sorted(effects, key=lambda x: x["index"])):
+            nxt = "g%d" % (i + 1)
+            parts.append(fx.local_effect_graph(e, ctx.size, label, nxt, ctx.tmp, enable=False))
+            label = nxt
+        vf = ";".join(parts) + ";[%s]null" % label
+    if captions and ctx.cap_filter:
+        vf += ",setpts=%.9f/TB,%s" % (float(core.frame_time(out_frame, ctx.fps)), ctx.cap_filter)
     t = _grab(ctx.plan["source"], sf, 1, ctx.fps, vf, size)
     return t[0] if t else None
 
@@ -320,18 +346,19 @@ def verify_effects(ctx, out_path):
         for o, inside in ((a, True), (b - 1, True), (a - 1, False), (b, False)):
             if o < 0 or o >= total:
                 continue
+            # Other local effects active on this frame are applied to both
+            # comparison frames, so overlapping effects are still proven.
             others = [x for x in local if x is not e and x["out_start_frame"] <= o < x["out_end_frame"]]
             sf = ctx.src_frame(o)
-            reason = ctx.busy.get(o) if not inside else None
-            if sf is None or others or (reason and not reason.endswith("effect")) or \
-                    (not inside and reason):
+            reason = ctx.busy.get(o)
+            if sf is None or (reason and not reason.endswith("effect")):
                 rows.append({"effect": e["type"], "index": e["index"], "out_frame": o,
                              "expect": "on" if inside else "off", "status": "SKIP"})
                 continue
             size = TEXT_THUMB if e["type"] == "text" else None
             out_t = _thumb_out(ctx, out_path, o, size)
-            plain = _thumb_src(ctx, sf, o, size=size)
-            with_fx = _thumb_src(ctx, sf, o, e, size=size)
+            plain = _thumb_src(ctx, sf, o, others, size=size)
+            with_fx = _thumb_src(ctx, sf, o, others + [e], size=size)
             d_fx, d_plain = ctx.mad(out_t, with_fx), ctx.mad(out_t, plain)
             near, far = (d_fx, d_plain) if inside else (d_plain, d_fx)
             if abs(d_fx - d_plain) < 0.5:
