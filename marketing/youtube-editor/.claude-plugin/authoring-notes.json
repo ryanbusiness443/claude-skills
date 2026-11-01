@@ -1,0 +1,7 @@
+{
+  "source": {
+    "spec": "User request: an AI agent that edits YouTube videos with top precision.",
+    "build_pattern": "Single-skill plugin: a cs-* agent owns editorial judgement and a bounded measure -> propose -> approve -> plan -> render -> verify loop (max 3 render/verify rounds); five stdlib-only tools drive ffmpeg via subprocess with exact Fraction time arithmetic, typed exit codes, --help/--sample/--output json, and a verifier whose --sample runs two negative controls (plan shifted one frame; audio shifted 10 ms) that must fail. References cite 7 sources each with per-claim confidence levels.",
+    "distinct_from": "marketing-skill/skills/youtube-full (transcripts, search and channel data for published videos — no editing); marketing-skill/video-content-strategist (what to make, not how to cut it); engineering/agent-harness (generic bounded loop — this is a domain-specific loop with its own verifier)"
+  }
+}
