@@ -71,14 +71,48 @@ length, sound density, CTA and loop. Each rule is labelled with its evidence lev
 On a real 22-second talking-head clip, the punchy and insane reels both passed every check and
 scored 100/100; a calmer hand edit of the same clip scored 70.
 
+## Genres, beat sync and montages
+
+```bash
+python3 $S/asset_packs.py pack --style motivation --dir packs/motivation   # CC0 grade + music + sounds
+python3 $S/viral_planner.py raw.mp4 --words words.json --style motivation \
+    --pack packs/motivation/pack.json --beat-sync --edl-out reel.edl.json
+python3 $S/montage_planner.py clips/ --music track.mp3 --style day-in-life \
+    --labels "7 AM,9 AM,NOON,6 PM" --bound-out bound.mp4 --edl-out vlog.edl.json
+```
+
+| Style | Pace | Look | Signature moves |
+|---|---|---|---|
+| `talking-head` | punchy | punch grade | hook card, pops on key words, CTA framing |
+| `motivation` | 2 beats a shot, 1 in rises | teal-orange, grain, vignette, bars on landscape | strongest line as a centre quote with an impact, flashes on downbeats in the rise |
+| `storytelling` | clean pauses, 4 beats a shot | moody, grain, deep vignette | a riser that ends on each story turn ("but", "then", "until"), slow push-ins |
+| `day-in-life` | 2 beats a shot, clips in order | warm-vlog, light grain | time cards from the camera clock or your labels, shutter click per moment |
+
+`beat_detector.py` finds the tempo, beats, downbeats and where the music rises or drops, with
+stdlib and ffmpeg only. On a synthetic track the worst beat error is 4.4 ms. A montage cuts
+every shot on a beat (worst offset half a frame), and the verifier's `BEAT_SYNC` check proves
+it: every planned cut sits within half a frame of its beat, and the music sits in the render
+where the plan put it (0.1 ms on the test). Shifting the beats or the music by 2 frames fails it.
+
+**Packs.** `asset_packs.py` searches [OpenFilm](https://github.com/openfilm/openfilm)'s CC0
+library (~1,222 music tracks with tempo and energy, ~5,436 sound effects, 66 grades;
+`npm i -g openfilm`) and its own built-in grades. It bakes any grade into a `.cube` LUT, so it
+renders and verifies like every other effect. On the real clip, a motivation reel with library
+sounds, a baked grade, grain and vignette passed every check: 5 library sounds were located
+within 0.125 ms, and 50 effect-edge frames matched.
+
+**Big files.** Bring footage in through Google Drive (the direct-download host has no chat size
+limit; a 35 MB 1080p60 file came across in 2.4 s) or any direct link, never re-encoded. See
+`skills/youtube-editor/references/workspace_and_inputs.md`.
+
 ## Transitions and effects
 
 | Kind | Options |
 |---|---|
 | Transitions | `cut` (default), `fade`, `dissolve`, `fadeblack`, `fadewhite`, wipes, slides, `circleopen`, `zoomin` and the rest of ffmpeg's 50+ `xfade` styles. Set a default and override per cut |
 | Local effects (source-timed) | `zoom` punch-in, `text` overlay (`box`, `hook`, `outline` styles), `blur` region, `shake`, `flash`, `glitch`, `bw` |
-| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), burned-in `captions` (`youtube` / `shorts` / word-by-word `viral` style), `music` bed with voice ducking, `progress_bar`, `fade_in`, `fade_out` |
-| Sound effects | `sfx` at any instant: whoosh, boom, bass_drop, pop, click, ding, riser, camera (synthesized, royalty-free) |
+| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), `look` (grain, vignette, letterbox bars), burned-in `captions` (`youtube` / `shorts` / word-by-word `viral` style), `music` bed with voice ducking, `progress_bar`, `fade_in`, `fade_out` |
+| Sound effects | `sfx` at any instant: whoosh, boom, bass_drop, pop, click, ding, riser, camera (synthesized, royalty-free), or any `file` (OpenFilm CC0 library, your own licensed sounds) |
 
 Each one is verified at the frame level. Effects must be **on** at their first and last frame
 and **off** just outside, and transition frames must be blends of both pieces. Burned captions
@@ -124,8 +158,9 @@ are re-rendered onto the source frames at the matching output time and compared.
 
 ## Scope
 
-Edits local files only. It does not download or upload videos, does not need API keys, and never
-modifies the source file. For transcripts, search and channel data on *published* videos, use
+Edits local files only. It never uploads, needs no API keys, and never modifies the source
+file. The only downloads are the ones you ask for: your own footage from Drive or a link, and
+CC0 library items through the OpenFilm CLI. For transcripts, search and channel data on *published* videos, use
 `marketing-skill/skills/youtube-full`.
 
 ## License

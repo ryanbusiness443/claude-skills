@@ -42,7 +42,9 @@ How transitions and effects are planned, rendered and proven, and when to use th
 | `shake` / `flash` | source range | crop offsets / white blend driven by output time `t` | source frame stamped with its output time, same chain re-applied |
 | `glitch` / `bw` | source range | `rgbashift` / `hue=s=0` gated by frame number | compared on colour thumbnails (grey ones cannot see colour vanish) |
 | `progress_bar` | whole video | `drawbox` whose width follows `t` | re-applied at each probe's output time |
-| `sfx` | one instant | synthesized WAV, gained against the normalised voice, `adelay` to the sample | `SFX_ALIGN`: located by cross-correlation, within 2 ms |
+| `sfx` | one instant | synthesized WAV or a pack `file` decoded to 48 kHz, gained against the normalised voice, `adelay` to the sample | `SFX_ALIGN`: located by cross-correlation from the sound's attack (leading silence skipped), within 2 ms |
+| `look` | whole video | `vignette` (evaluated once), `noise` without the temporal flag (a fixed grain pattern), `drawbox` letterbox bars of `(ih-iw/R)/2` | part of the colour chain the verifier rebuilds on every probe frame |
+| beat-cut montage | every cut | shots quantised to whole frames between beat-nearest frames; reordered or reused shots render as separately seeked inputs | `BEAT_SYNC`: each cut within half a frame of its beat; music located by onset cross-correlation (limit max(10 ms, half a frame)) |
 
 Short-form rules for using them (hook, pacing, density caps, loop ending) are in
 `short_form_retention.md`.

@@ -51,6 +51,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   call to action, and the caption check did not know about the karaoke hold.
   **Counters:** skills 398 → 399; tools 766 → 775; refs 877 → 882; agents 123 → 124; commands
   157 → 160; plugins 104 → 105.
+- **`youtube-editor` genres, beat sync, montages and CC0 packs** — `--style storytelling | motivation |
+  day-in-life` in `viral_planner.py`: moody, teal-orange or warm grades with grain and vignette, the
+  strongest line as a centre quote, risers that end on story turns, shutter clicks on time jumps.
+  `beat_detector.py` (stdlib plus ffmpeg) finds tempo, beats, downbeats and rises, with a metre re-rank
+  that tests ×½…×2 by grid fit: 4.4 ms worst beat error on a synthetic track. On 10 OpenFilm tracks it
+  disagreed with the catalogue BPM 5 times, and in 4 of those its grid landed on onsets more strongly.
+  `--beat-sync` slides jump cuts onto beats inside their pauses and moves hits within 120 ms.
+  `montage_planner.py` joins a folder of clips frame-exact and cuts every shot on a beat. The new
+  verifier check `BEAT_SYNC` proves each cut within half a frame of its beat and the music in place by
+  onset cross-correlation: 9/9 cuts, worst 4.4 ms, music at 0.1 ms, and beats or music shifted 2 frames
+  both fail it. `asset_packs.py` searches and takes OpenFilm's CC0 library (~1,222 tracks, ~5,436
+  sounds, 66 grades) and bakes any grade to a `.cube` in OpenFilm's own order (matrix, saturation,
+  curves). New effects: `look` (vignette, fixed grain, letterbox) and `sfx` from a `file`; `SFX_ALIGN`
+  now starts at a sound's attack. Found and fixed while building it: a 110-sample hop is 9.977 ms, not
+  10 ms (beats drifted 20 ms over 4 s), and the single-pass `select` renderer cannot reorder or reuse
+  shots, so montages now render each piece as its own seeked input. New `/cs-montage-edit` command and
+  references `genre_editing_playbook.md` and `workspace_and_inputs.md` (getting big files in through
+  Google Drive or a link, never re-encoded). **Counters:** tools 775 → 778; refs 882 → 884; commands
+  160 → 161.
 
 ## [2.14.0] - 2026-10-21 — Audit skills, open-source YouTube and plugin-name fixes
 

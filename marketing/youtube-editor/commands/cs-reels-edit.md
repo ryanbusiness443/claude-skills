@@ -1,7 +1,7 @@
 ---
 name: "cs-reels-edit"
 description: "/cs-reels-edit — Turn a raw talking-head clip into a retention-edited Short, Reel or TikTok: hook title card, jump cuts, zoom rhythm, punch-ins on key words, karaoke captions, synthesized sound effects and shocks, progress bar and a loop ending, planned from the transcript, rendered frame-exact, verified, and scored 0-100 for retention."
-argument-hint: "[raw clip] [optional: clean|punchy|insane, music file, hook text]"
+argument-hint: "[raw clip] [optional: style, clean|punchy|insane, music file, hook text]"
 ---
 
 # /cs-reels-edit — Short-form edit, planned like an editor, proven like an engineer
@@ -20,14 +20,17 @@ Runs the reels mode of [`../skills/youtube-editor/SKILL.md`](../skills/youtube-e
 
 - Long-form editing with a hand-approved cut list → [`/cs-youtube-edit`](cs-youtube-edit.md)
 - Only checking a render → [`/cs-youtube-verify`](cs-youtube-verify.md)
+- B-roll clips with music and no talking → [`/cs-montage-edit`](cs-montage-edit.md)
 
 ## Steps
 
-1. Ask the intensity (recommend **punchy**; **insane** only for hype or entertainment), the hook
-   (recommend the payoff, not a greeting), and whether a licensed music bed is available.
+1. Ask the style (talking-head, motivation, storytelling, day-in-life), the intensity (recommend
+   **punchy**; **insane** only for hype or entertainment), the hook (recommend the payoff, not a
+   greeting), and the music: a licensed bed, or a CC0 pack from `asset_packs.py pack --style ...`.
 2. Transcribe with word timestamps (faster-whisper) if no transcript exists.
-3. `viral_planner.py raw.mp4 --words words.json --intensity punchy --music bed.mp3
-   --edl-out reel.edl.json --notes-out notes.md`. Read the editor's notes back to the user.
+3. `viral_planner.py raw.mp4 --words words.json --style motivation --music bed.mp3 --beat-sync
+   [--pack pack.json] --edl-out reel.edl.json --notes-out notes.md`. Read the editor's notes back,
+   including how many cuts made it onto the beat.
 4. `edit_planner.py reel.edl.json --snap-words --plan-out reel.plan.json` → resolve findings.
 5. `render_engine.py reel.plan.json -o reel.mp4`, then `edit_verifier.py reel.plan.json reel.mp4`
    → PASS required, at most 3 fix rounds.

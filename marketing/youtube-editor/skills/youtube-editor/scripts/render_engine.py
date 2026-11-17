@@ -273,7 +273,7 @@ def _build(plan, info, preset, deinterlace, lfilter, tmp, measure=False, audio=T
     audio_idx = None
     if plan["has_video"] and not measure:
         geo, size = fx.geometry_filters(info, PRESETS[preset])
-        if fx.has_transitions(plan):
+        if fx.needs_piece_inputs(plan):
             piece_inputs = []
             for s in plan["segments"]:
                 f0 = s["src_start_frame"]
@@ -297,10 +297,7 @@ def _build(plan, info, preset, deinterlace, lfilter, tmp, measure=False, audio=T
         if include_sfx:
             cache = {}
             for e in fx.sfx_effects(effects):
-                if e["sound"] not in cache:
-                    cache[e["sound"]] = fx.synth_sfx(e["sound"],
-                                                     os.path.join(tmp, "sfx_%s.wav" % e["sound"]))
-                sfx_inputs.append((add(["-i", cache[e["sound"]]]), e))
+                sfx_inputs.append((add(["-i", fx.sfx_wav(e, tmp, cache)]), e))
         graph.append(_audio_chain(plan, lfilter, audio_idx, music_idx, effects, sfx_inputs,
                                   sfx_offset_db))
     return [a for arg in inputs for a in arg], ";\n".join(graph)
