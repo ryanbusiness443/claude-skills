@@ -39,6 +39,13 @@ How transitions and effects are planned, rendered and proven, and when to use th
 | `captions` | whole video | `subtitles` (libass) from cues remapped through the edit | source frames re-captioned at the matching output time: the output must match *with* captions and differ *without* |
 | `music` | whole video | looped, trimmed to the exact sample count, ducked by a voice-keyed `sidechaincompress`, mixed before loudness | loudness and true peak on the final mix |
 | `fade_in` / `fade_out` | edges | `fade` by frame count, `afade` by duration | first/last frame mean luma ≤ 24 |
+| `shake` / `flash` | source range | crop offsets / white blend driven by output time `t` | source frame stamped with its output time, same chain re-applied |
+| `glitch` / `bw` | source range | `rgbashift` / `hue=s=0` gated by frame number | compared on colour thumbnails (grey ones cannot see colour vanish) |
+| `progress_bar` | whole video | `drawbox` whose width follows `t` | re-applied at each probe's output time |
+| `sfx` | one instant | synthesized WAV, gained against the normalised voice, `adelay` to the sample | `SFX_ALIGN`: located by cross-correlation, within 2 ms |
+
+Short-form rules for using them (hook, pacing, density caps, loop ending) are in
+`short_form_retention.md`.
 
 - Gating by frame number (`n`) rather than time removes the rounding window at effect edges:
   the effect starts and stops on the exact planned frame, and the `EFFECTS` check proves it with

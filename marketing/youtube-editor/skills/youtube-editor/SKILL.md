@@ -1,12 +1,12 @@
 ---
 name: "youtube-editor"
-description: "Frame-accurate YouTube video editing agent: cuts silences, filler words and retakes, adds transitions (crossfade, dip to black, wipes, 50+ styles) and effects (zoom punch-ins, text, blur, color/LUT, burned-in captions, ducked music, fades), renders an upload-ready MP4, and proves every cut, transition and effect landed on the exact frame before calling it done. Use when the user wants a raw recording edited for YouTube, dead air or 'um's removed, transitions or effects added, a Shorts version, chapters or captions carried through an edit, or a render checked against YouTube's upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
+description: "Frame-accurate video editing agent for YouTube and short-form reels: cuts silences, filler words and retakes; auto-plans retention edits (hook title card, jump cuts, zoom rhythm, punch-ins, karaoke captions, synthesized sound effects, flash/shake/glitch shocks, progress bar, loop ending) and scores them; adds 50+ transitions and effects; renders upload-ready MP4s and proves every cut, effect and sound landed on the exact frame. Use when the user wants a raw recording edited for YouTube, Shorts, Reels or TikTok, a video made more engaging or viral, dead air or 'um's removed, transitions, effects or captions added, or a render checked against the upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
 license: "MIT"
 ---
 
 # youtube-editor — precision editing, verified
 
-The agent decides *what* to cut; five stdlib tools on top of ffmpeg decide *where*, to the frame and the audio sample, and then prove it. Nothing is reported as done until `edit_verifier.py` returns PASS.
+The agent decides *what* to cut; stdlib tools on top of ffmpeg decide *where*, to the frame and the audio sample, and then prove it. Nothing is reported as done until `edit_verifier.py` returns PASS.
 
 **Requires** ffmpeg ≥ 5.1 (`brew install ffmpeg` / `sudo apt install ffmpeg`). Word timestamps are optional but unlock word-safe cuts and filler removal: `pip install faster-whisper`, or reuse an existing transcript JSON. Never install anything without asking.
 
@@ -50,6 +50,18 @@ Add them in the EDL; `python3 scripts/effects_library.py list` shows every optio
 
 A per-cut `"transition"` overrides the default. Local effects (`zoom`, `text`, `blur`) take **source** times, so they move with the content when cuts change. Transitions overlap pieces, and the planner shortens the timeline by exactly that many frames, video and audio. Ask before adding effects the user did not request: restraint is part of the craft.
 
+## Reels and viral mode
+
+For Shorts, Reels and TikTok, let the planner make the short-form editor's calls, then run the normal plan → render → verify loop and score the result:
+
+```bash
+python3 scripts/viral_planner.py raw.mp4 --words words.json --intensity punchy --music bed.mp3 \
+    --edl-out reel.edl.json --notes-out notes.md          # clean | punchy | insane
+python3 scripts/retention_audit.py plan.json --format short   # 0-100, fixes listed
+```
+
+It cuts every pause, puts the first word on frame 1 under a hook title card with a flash and boom, alternates framing so the frame never sits still past 1.6–4 s, punches in on numbers and power words, frames the call to action tightest, and ends hard so the replay loops. Shocks (`flash`, `shake`, `glitch`, `bw`) and synthesized `sfx` are punctuation, capped by density. Match intensity to content: `insane` on a serious topic reads as noise. Read the notes back to the user, and say plainly that the edit raises retention, not the idea's appeal (`references/short_form_retention.md`).
+
 ## Precision guarantees (each one is checked, not assumed)
 
 | Guarantee | Enforced by |
@@ -62,7 +74,7 @@ A per-cut `"transition"` overrides the default. Local effects (`zoom`, `text`, `
 | Integrated loudness −14 LUFS ±1, true peak ≤ −1 dBTP | renderer two-pass loudnorm + verifier |
 | H.264 High / yuv420p / AAC 48 kHz / faststart / closed GOP | renderer + verifier `UPLOAD_SPEC` |
 | Each effect is on at its first and last frame and off just outside (zoom, text, blur) | verifier `EFFECTS` |
-| Transition frames are blends of both pieces; captions are the right text at the right time | verifier `TRANSITIONS`, `CAPTIONS`, `FADES` |
+| Transitions match a rebuild; captions and sound effects land at the right time | verifier `TRANSITIONS`, `CAPTIONS`, `SFX_ALIGN`, `FADES` |
 
 ## Hard rules
 
@@ -80,6 +92,8 @@ A per-cut `"transition"` overrides the default. Local effects (`zoom`, `text`, `
 | `render_engine.py` | plan → MP4 in one decode pass | 0 · 1 · 3 · 4 · 6 |
 | `edit_verifier.py` | plan + render → PASS/FAIL with per-cut frame matching | 0 pass · 1 fail |
 | `timeline_remapper.py` | chapters · captions · timestamps through the edit | 0 · 2 warn |
-| `effects_library.py` | list transitions/effects · validate an EDL's effects | 0 · 2 · 3 |
+| `effects_library.py` | list transitions/effects/sounds · validate an EDL's effects | 0 · 2 · 3 |
+| `viral_planner.py` | transcript → retention EDL + editor's notes | 0 · 4 · 6 |
+| `retention_audit.py` | plan → retention score 0-100 with fixes | 0 · 2 below 75 |
 
-All support `--help`, `--sample` and `--output json`. Schemas and edge cases: `references/precision_editing_canon.md`, `references/youtube_delivery_spec.md`, `references/edit_decision_playbook.md`, `references/effects_and_transitions.md`. Templates: `assets/`.
+All support `--help`, `--sample` and `--output json`. Schemas and edge cases: `references/precision_editing_canon.md`, `references/youtube_delivery_spec.md`, `references/edit_decision_playbook.md`, `references/effects_and_transitions.md`, `references/short_form_retention.md`. Templates: `assets/`.

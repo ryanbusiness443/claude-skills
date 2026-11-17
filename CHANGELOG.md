@@ -33,8 +33,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ffmpeg's `acrossfade` adds 256 samples per crossfade (replaced), `concat` breaks a following `xfade`
   with a mismatched timebase (fixed), and a 64 kbps draft preset could not meet its own true-peak
   check (raised to 192 kbps).
-  **Counters:** skills 398 → 399; tools 766 → 773; refs 877 → 881; agents 123 → 124; commands
-  157 → 159; plugins 104 → 105.
+- **`youtube-editor` reels and viral mode** — `viral_planner.py` turns a transcript into a short-form
+  retention edit with written editor's notes (hook title card + flash + boom on frame 1, jump cuts on
+  every pause, zoom rhythm capping stillness at 1.6–4 s by intensity, punch-ins and pops on numbers
+  and power words, imperative-CTA detection with tightest framing and a ding, karaoke captions,
+  progress bar, music bed, hard loop ending; clean / punchy / insane), and `retention_audit.py`
+  scores any plan 0-100 with fixes and the evidence level of each rule
+  (`references/short_form_retention.md`). New effects: `shake`, `flash`, `glitch`, `bw`,
+  `progress_bar`, `hook`/`outline` text styles in the heaviest installed font, word-by-word `viral`
+  captions (ASS), and eight sound effects synthesized in code (whoosh, boom, bass drop, pop, click,
+  ding, riser, camera) levelled against the normalised voice. The verifier gains `SFX_ALIGN` (each
+  sound located by cross-correlation within 2 ms) and rebuilds time-driven effects by stamping
+  source frames with their output time. On a real 22-second clip both reel intensities passed every
+  check and scored 100/100 (a calmer hand edit scored 70). Found and fixed while building it:
+  drawtext ignores font styles (the heavy face now resolves to a file via fontconfig), karaoke
+  phrases overlapped, hook text overflowed a vertical frame, a mid-sentence "buy" was taken for the
+  call to action, and the caption check did not know about the karaoke hold.
+  **Counters:** skills 398 → 399; tools 766 → 775; refs 877 → 882; agents 123 → 124; commands
+  157 → 160; plugins 104 → 105.
 
 ## [2.14.0] - 2026-10-21 — Audit skills, open-source YouTube and plugin-name fixes
 

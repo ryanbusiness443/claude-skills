@@ -43,13 +43,42 @@ python3 $S/timeline_remapper.py chapters plan.json chapters.txt
 python3 $S/timeline_remapper.py captions plan.json --words words.json -o final.srt
 ```
 
+## Reels and viral mode
+
+```bash
+python3 $S/viral_planner.py raw.mp4 --words words.json --intensity punchy --music bed.mp3 \
+    --edl-out reel.edl.json --notes-out notes.md
+python3 $S/edit_planner.py reel.edl.json --snap-words --plan-out reel.plan.json
+python3 $S/render_engine.py reel.plan.json -o reel.mp4 && python3 $S/edit_verifier.py reel.plan.json reel.mp4
+python3 $S/retention_audit.py reel.plan.json --format short
+```
+
+The planner makes a short-form editor's calls from the transcript and writes each one down:
+- **Hook:** the first word lands on frame 1 under a title card, with a flash and a boom.
+- **Pacing:** jump cuts on every pause, and the framing alternates so the frame never sits still
+  longer than the intensity allows.
+- **Emphasis:** punch-ins and pops on numbers and power words.
+- **Call to action:** the CTA sentence gets the tightest framing and a ding.
+- **Finish:** karaoke captions, a progress bar, a ducked music bed and a hard loop ending.
+
+Shocks (flash, shake, RGB glitch, black-and-white hit) and eight sound effects synthesized in
+code (whoosh, boom, bass drop, pop, click, ding, riser, camera) are density-capped. Each sound
+effect is located in the output by cross-correlation (`SFX_ALIGN`). `retention_audit.py` scores
+the plan 0-100: hook speed, hook visual and text, longest still stretch, change rate, captions,
+length, sound density, CTA and loop. Each rule is labelled with its evidence level in
+`references/short_form_retention.md`.
+
+On a real 22-second talking-head clip, the punchy and insane reels both passed every check and
+scored 100/100; a calmer hand edit of the same clip scored 70.
+
 ## Transitions and effects
 
 | Kind | Options |
 |---|---|
 | Transitions | `cut` (default), `fade`, `dissolve`, `fadeblack`, `fadewhite`, wipes, slides, `circleopen`, `zoomin` and the rest of ffmpeg's 50+ `xfade` styles. Set a default and override per cut |
-| Local effects (source-timed) | `zoom` punch-in, `text` overlay, `blur` region |
-| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), burned-in `captions` (`youtube` / `shorts` style), `music` bed with voice ducking, `fade_in`, `fade_out` |
+| Local effects (source-timed) | `zoom` punch-in, `text` overlay (`box`, `hook`, `outline` styles), `blur` region, `shake`, `flash`, `glitch`, `bw` |
+| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), burned-in `captions` (`youtube` / `shorts` / word-by-word `viral` style), `music` bed with voice ducking, `progress_bar`, `fade_in`, `fade_out` |
+| Sound effects | `sfx` at any instant: whoosh, boom, bass_drop, pop, click, ding, riser, camera (synthesized, royalty-free) |
 
 Each one is verified at the frame level. Effects must be **on** at their first and last frame
 and **off** just outside, and transition frames must be blends of both pieces. Burned captions

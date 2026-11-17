@@ -1947,7 +1947,7 @@
       "name": "youtube-editor",
       "source": "../../marketing/youtube-editor/skills/youtube-editor",
       "category": "marketing",
-      "description": "Frame-accurate YouTube video editing agent: cuts silences, filler words and retakes, renders an upload-ready MP4, and proves every cut landed on the exact frame before calling it done. Use when the user wants a raw recording edited for YouTube, dead air or 'um's removed, a cut list applied precisely, a Shorts version, chapters or captions carried through an edit, or a render checked against YouTube's upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
+      "description": "Frame-accurate video editing agent for YouTube and short-form reels: cuts silences, filler words and retakes; auto-plans retention edits (hook title card, jump cuts, zoom rhythm, punch-ins, karaoke captions, synthesized sound effects, flash/shake/glitch shocks, progress bar, loop ending) and scores them; adds 50+ transitions and effects; renders upload-ready MP4s and proves every cut, effect and sound landed on the exact frame. Use when the user wants a raw recording edited for YouTube, Shorts, Reels or TikTok, a video made more engaging or viral, dead air or 'um's removed, transitions, effects or captions added, or a render checked against the upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
     },
     {
       "name": "youtube-full",
