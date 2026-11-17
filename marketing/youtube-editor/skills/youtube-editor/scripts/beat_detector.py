@@ -104,7 +104,7 @@ def estimate_tempo(env, bpm_hint=None, lo=60.0, hi=190.0):
     mean = sum(env) / max(1, n)
     x = [v - mean for v in env]
     centre, width = (bpm_hint, 0.05) if bpm_hint else (120.0, 0.9)
-    best, scores = None, []
+    scores = []
     min_lag = int(60.0 / hi / HOP_S)
     max_lag = int(60.0 / lo / HOP_S)
     energy = sum(v * v for v in x) or 1.0

@@ -499,7 +499,8 @@ def load_beats(beats_path=None, music=None, until=None):
 
 
 def apply_pack(effects, style, pack, pack_dir, notes):
-    """Swap synthesized sounds for the pack's library sounds and the colour for its grade."""
+    """Swap synthesized sounds for the pack's library sounds, and the colour for its
+    grade."""
     import asset_packs
     if pack is None:
         os.makedirs(pack_dir, exist_ok=True)
