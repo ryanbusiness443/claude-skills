@@ -143,8 +143,8 @@ def audit(plan, fmt="short"):
             "length_s": round(float(total), 2), "changes_per_10s": round(rate, 2),
             "longest_still_s": round(float(longest), 2), "checks": rows,
             "fixes": [r["fix"] for r in rows if r["fix"]],
-            "caveat": "A retention score predicts pacing, not virality: the idea, the first "
-                      "sentence and the topic decide far more than any edit."}
+            "caveat": "A retention score predicts pacing, not virality: the idea, the "
+                      "first sentence and the topic decide far more than any edit."}
 
 
 def print_text(rep):

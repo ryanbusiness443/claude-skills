@@ -621,7 +621,8 @@ def verify(plan, out_path, max_cuts=50, check_loudness=True):
         bad = [r for r in sfx_rows if r["status"] == "FAIL"]
         lags = [abs(r["lag_ms"]) for r in sfx_rows if "lag_ms" in r and r["status"] == "PASS"]
         _check(rows, "SFX_ALIGN", not bad,
-               "%d sound effects located: %d on their frame (worst %s ms), %d masked, %d wrong"
+               "%d sound effects located: %d on their frame (worst %s ms), %d masked, "
+               "%d wrong"
                % (len(sfx_rows), len(lags), max(lags) if lags else "n/a",
                   sum(1 for r in sfx_rows if r["status"] == "AMBIGUOUS"), len(bad)))
     if plan["has_video"] and v and max_cuts != 0:

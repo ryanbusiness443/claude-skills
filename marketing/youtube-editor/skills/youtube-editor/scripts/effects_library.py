@@ -595,12 +595,14 @@ def write_viral_ass(plan, e, path, size):
     margin_v = int(round(H * (0.24 if H > W else 0.10)))
     head = ("[Script Info]\nScriptType: v4.00+\nPlayResX: %d\nPlayResY: %d\n"
             "WrapStyle: 2\nScaledBorderAndShadow: yes\n\n[V4+ Styles]\n"
-            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
-            "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
+            "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, "
+            "OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, "
+            "ScaleY, Spacing, Angle, "
             "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
             "Style: Viral,%s,%d,&H00FFFFFF,&H00FFFFFF,&H00000000,&H64000000,-1,0,0,0,"
             "100,100,0,0,1,%d,%d,2,40,40,%d,1\n\n[Events]\n"
-            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
+            "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, "
+            "Text\n"
             % (W, H, heavy_font()[1], fs, max(3, fs // 9), max(1, fs // 22), margin_v))
     lines = []
     cues = []
