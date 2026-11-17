@@ -1,0 +1,168 @@
+# youtube-editor
+
+A YouTube video editing agent built for precision. It decides **what** to cut the way an editor
+would, and hands **where** to six stdlib tools on ffmpeg that cut to the exact frame and audio
+sample, add transitions and effects, and then check the render. Nothing is reported as done
+until the verifier passes.
+
+```text
+raw.mp4 ──probe/analyze──▶ proposed cuts ──you approve──▶ edl.json
+        ──edit_planner──▶ plan.json (frame + sample exact, findings)
+        ──render_engine──▶ final.mp4 ──edit_verifier──▶ PASS / FAIL (max 3 rounds)
+        ──timeline_remapper──▶ chapters block + final.srt
+```
+
+## Install
+
+```bash
+/plugin marketplace add alirezarezvani/claude-skills
+/plugin install youtube-editor@claude-code-skills
+```
+
+Requires **ffmpeg ≥ 5.1** (`brew install ffmpeg`, `sudo apt install ffmpeg`, `winget install ffmpeg`).
+Optional: word timestamps from `faster-whisper` / WhisperX or an existing transcript JSON. These
+enable word-safe cuts and filler removal.
+
+## Use
+
+```text
+/cs-youtube-edit raw.mp4 words.json chapters.txt
+/cs-youtube-verify plan.json final.mp4
+```
+
+Or run the tools directly. Each one supports `--help`, `--sample` (a self-contained demo on a
+generated clip) and `--output json`:
+
+```bash
+S=skills/youtube-editor/scripts
+python3 $S/media_analyzer.py propose raw.mp4 --words words.json --edl-out edl.json
+python3 $S/edit_planner.py edl.json --snap-words --plan-out plan.json
+python3 $S/render_engine.py plan.json -o final.mp4
+python3 $S/edit_verifier.py plan.json final.mp4
+python3 $S/timeline_remapper.py chapters plan.json chapters.txt
+python3 $S/timeline_remapper.py captions plan.json --words words.json -o final.srt
+```
+
+## Reels and viral mode
+
+```bash
+python3 $S/viral_planner.py raw.mp4 --words words.json --intensity punchy --music bed.mp3 \
+    --edl-out reel.edl.json --notes-out notes.md
+python3 $S/edit_planner.py reel.edl.json --snap-words --plan-out reel.plan.json
+python3 $S/render_engine.py reel.plan.json -o reel.mp4 && python3 $S/edit_verifier.py reel.plan.json reel.mp4
+python3 $S/retention_audit.py reel.plan.json --format short
+```
+
+The planner makes a short-form editor's calls from the transcript and writes each one down:
+- **Hook:** the first word lands on frame 1 under a title card, with a flash and a boom.
+- **Pacing:** jump cuts on every pause, and the framing alternates so the frame never sits still
+  longer than the intensity allows.
+- **Emphasis:** punch-ins and pops on numbers and power words.
+- **Call to action:** the CTA sentence gets the tightest framing and a ding.
+- **Finish:** karaoke captions, a progress bar, a ducked music bed and a hard loop ending.
+
+Shocks (flash, shake, RGB glitch, black-and-white hit) and eight sound effects synthesized in
+code (whoosh, boom, bass drop, pop, click, ding, riser, camera) are density-capped. Each sound
+effect is located in the output by cross-correlation (`SFX_ALIGN`). `retention_audit.py` scores
+the plan 0-100: hook speed, hook visual and text, longest still stretch, change rate, captions,
+length, sound density, CTA and loop. Each rule is labelled with its evidence level in
+`references/short_form_retention.md`.
+
+On a real 22-second talking-head clip, the punchy and insane reels both passed every check and
+scored 100/100; a calmer hand edit of the same clip scored 70.
+
+## Genres, beat sync and montages
+
+```bash
+python3 $S/asset_packs.py pack --style motivation --dir packs/motivation   # CC0 grade + music + sounds
+python3 $S/viral_planner.py raw.mp4 --words words.json --style motivation \
+    --pack packs/motivation/pack.json --beat-sync --edl-out reel.edl.json
+python3 $S/montage_planner.py clips/ --music track.mp3 --style day-in-life \
+    --labels "7 AM,9 AM,NOON,6 PM" --bound-out bound.mp4 --edl-out vlog.edl.json
+```
+
+| Style | Pace | Look | Signature moves |
+|---|---|---|---|
+| `talking-head` | punchy | punch grade | hook card, pops on key words, CTA framing |
+| `motivation` | 2 beats a shot, 1 in rises | teal-orange, grain, vignette, bars on landscape | strongest line as a centre quote with an impact, flashes on downbeats in the rise |
+| `storytelling` | clean pauses, 4 beats a shot | moody, grain, deep vignette | a riser that ends on each story turn ("but", "then", "until"), slow push-ins |
+| `day-in-life` | 2 beats a shot, clips in order | warm-vlog, light grain | time cards from the camera clock or your labels, shutter click per moment |
+
+`beat_detector.py` finds the tempo, beats, downbeats and where the music rises or drops, with
+stdlib and ffmpeg only. On a synthetic track the worst beat error is 4.4 ms. A montage cuts
+every shot on a beat (worst offset half a frame), and the verifier's `BEAT_SYNC` check proves
+it: every planned cut sits within half a frame of its beat, and the music sits in the render
+where the plan put it (0.1 ms on the test). Shifting the beats or the music by 2 frames fails it.
+
+**Packs.** `asset_packs.py` searches [OpenFilm](https://github.com/openfilm/openfilm)'s CC0
+library (~1,222 music tracks with tempo and energy, ~5,436 sound effects, 66 grades;
+`npm i -g openfilm`) and its own built-in grades. It bakes any grade into a `.cube` LUT, so it
+renders and verifies like every other effect. On the real clip, a motivation reel with library
+sounds, a baked grade, grain and vignette passed every check: 5 library sounds were located
+within 0.125 ms, and 50 effect-edge frames matched.
+
+**Big files.** Bring footage in through Google Drive (the direct-download host has no chat size
+limit; a 35 MB 1080p60 file came across in 2.4 s) or any direct link, never re-encoded. See
+`skills/youtube-editor/references/workspace_and_inputs.md`.
+
+## Transitions and effects
+
+| Kind | Options |
+|---|---|
+| Transitions | `cut` (default), `fade`, `dissolve`, `fadeblack`, `fadewhite`, wipes, slides, `circleopen`, `zoomin` and the rest of ffmpeg's 50+ `xfade` styles. Set a default and override per cut |
+| Local effects (source-timed) | `zoom` punch-in, `text` overlay (`box`, `hook`, `outline` styles), `blur` region, `shake`, `flash`, `glitch`, `bw` |
+| Global effects | `color` (brightness/contrast/saturation/gamma), `lut` (.cube), `look` (grain, vignette, letterbox bars), burned-in `captions` (`youtube` / `shorts` / word-by-word `viral` style), `music` bed with voice ducking, `progress_bar`, `fade_in`, `fade_out` |
+| Sound effects | `sfx` at any instant: whoosh, boom, bass_drop, pop, click, ding, riser, camera (synthesized, royalty-free), or any `file` (OpenFilm CC0 library, your own licensed sounds) |
+
+Each one is verified at the frame level. Effects must be **on** at their first and last frame
+and **off** just outside, and transition frames must be blends of both pieces. Burned captions
+are re-rendered onto the source frames at the matching output time and compared. See
+`skills/youtube-editor/references/effects_and_transitions.md`.
+
+## What "top precision" means here, in checks
+
+| Check | Measured result on the test suite |
+|---|---|
+| Output frame count = plan | exact (4080/4080 frames, 61-piece 1080p edit) |
+| Frame after every cut = intended source frame | 100/100 boundaries at offset 0 |
+| Audio alignment inside each piece (cross-correlation) | 0.0 ms worst lag; a 10 ms shift is caught |
+| Beeps at known times through 3 cuts + 44.1→48 kHz resample | ≤ 1 sample error |
+| Source where audio starts 278 ms after video | 0.06 ms worst error |
+| A/V end sync | ≤ 0.13 ms |
+| Loudness | −14 LUFS ±1, true peak ≤ −1 dBTP (+0.5 tolerance after AAC) |
+
+`edit_verifier.py --sample` runs four negative controls that must FAIL, and do:
+- the same render checked against a plan shifted by one frame
+- a render with audio 10 ms late
+- a zoom window claimed 2 frames later than rendered
+- a hard cut rendered where the plan says crossfade
+
+## Design decisions
+
+- **No stream copy for cuts.** `-c copy` starts a piece on a keyframe, which can be seconds early.
+  Every piece is re-encoded, selected by frame index and sample index in one decode pass.
+- **Exact arithmetic.** Times are `fractions.Fraction`, never floats. 29.97 fps is 30000/1001. SMPTE
+  drop-frame timecode is supported.
+- **Audio follows video.** Each piece's sample count comes from the output frame timeline, so
+  rounding never accumulates however many cuts there are. Leading silence is inserted when a
+  source's audio starts after its video.
+- **Short fades at hard cuts; planned crossfades for transitions.** A 12 ms fade at each hard cut
+  removes clicks without changing length. A transition is a planned overlap: the timeline is
+  shortened by exactly its frames, and the audio crossfade spans exactly the same samples.
+- **Honest uncertainty.** Static shots and held tones are reported `AMBIGUOUS`, not passed.
+- **Bugs the verifier caught during the build** are now regression cases: a duplicated frame after
+  seeking in raw output, audio landing 278 ms early when a source's audio starts late,
+  dynamic-mode loudnorm adding 27 ms and overshooting true peak, ffmpeg's `acrossfade` adding
+  256 samples (5 ms) per crossfade, and `concat` breaking a following `xfade` with a mismatched
+  timebase.
+
+## Scope
+
+Edits local files only. It never uploads, needs no API keys, and never modifies the source
+file. The only downloads are the ones you ask for: your own footage from Drive or a link, and
+CC0 library items through the OpenFilm CLI. For transcripts, search and channel data on *published* videos, use
+`marketing-skill/skills/youtube-full`.
+
+## License
+
+MIT, part of [claude-skills](https://github.com/alirezarezvani/claude-skills).

@@ -1,7 +1,7 @@
 {
   "version": "1.0.0",
   "name": "gemini-cli-skills",
-  "total_skills": 446,
+  "total_skills": 447,
   "skills": [
     {
       "name": "content-strategist",
@@ -1479,6 +1479,11 @@
       "description": "Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, build, or author a new skill."
     },
     {
+      "name": "youtube-editor",
+      "category": "marketing-top-level",
+      "description": "Frame-accurate video editing agent for YouTube and short-form reels: cuts silences, filler words and retakes; auto-plans retention edits (hook title card, jump cuts, zoom rhythm, punch-ins, karaoke captions, synthesized sound effects, flash/shake/glitch shocks, progress bar, loop ending) and scores them; adds 50+ transitions and effects; renders upload-ready MP4s and proves every cut, effect and sound landed on the exact frame. Use when the user wants a raw recording edited for YouTube, Shorts, Reels or TikTok, a video made more engaging or viral, dead air or 'um's removed, transitions, effects or captions added, or a render checked against the upload spec. Do NOT use for downloading YouTube videos, thumbnail design, or generating new footage."
+    },
+    {
       "name": "zero-hallucination-coder",
       "category": "engineering-advanced",
       "description": "Runs a disciplined Discuss -> Map -> Decompose -> Execute -> Verify loop that grounds code in verified structure \u2014 no invented APIs, no assumed imports, no placeholder code \u2014 with a lazy-senior-dev YAGNI ladder that deletes unnecessary code before it is written. Use when a coding task is high-stakes, complex, or spans existing code (auth, databases, migrations, multi-file features), or when the user explicitly asks to plan carefully before coding, avoid hallucinated code, or work rigorously. Not for trivial edits, typos, or throwaway one-off scripts \u2014 those do not need the full loop."
@@ -2288,7 +2293,7 @@
       "description": "Marketing resources"
     },
     "marketing-top-level": {
-      "count": 7,
+      "count": 8,
       "description": "Marketing-top-level resources"
     },
     "product": {

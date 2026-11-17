@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`marketing/youtube-editor`** — a frame-accurate YouTube video editing agent (`cs-youtube-video-editor`,
+  `/cs-youtube-edit`, `/cs-youtube-verify`) that proves its cuts. The agent makes the editorial calls
+  with user approval; five stdlib tools on ffmpeg do the cutting: `media_analyzer.py` (probe, silence /
+  black / scene / EBU R128 analysis, padded word-safe cut proposals), `edit_planner.py` (EDL → plan with
+  exact rational frame math, drop-frame SMPTE, `MID_WORD` guard, audio boundaries derived from the output
+  frame timeline), `render_engine.py` (one decode pass by frame and sample index, never stream copy;
+  two-pass loudness to −14 LUFS / −1 dBTP with a delay-compensated limiter fallback; YouTube's
+  recommended H.264/AAC/faststart settings; Shorts preset), `edit_verifier.py` (exact frame count,
+  per-cut frame matching, per-piece audio cross-correlation within 1 ms, A/V sync, loudness, upload
+  spec, with two negative controls that must fail) and `timeline_remapper.py` (chapters under YouTube's
+  rules, captions, timestamps). Three bugs the verifier caught during the build (a duplicated frame
+  after seeking, audio landing early when a source's audio starts after its video, and loudnorm
+  changing length) are fixed and covered.
+- **`youtube-editor` transitions and effects** — new `effects_library.py` (list/check CLI shared by the
+  planner, renderer and verifier). 50+ `xfade` transitions (default plus per-cut override) that
+  shorten the timeline by exactly their overlap, with sample-exact audio crossfades; local effects
+  (`zoom` punch-in, `text`, `blur`) in source time and gated by frame number; global `color`, `lut`,
+  burned-in `captions`, voice-ducked `music`, `fade_in`/`fade_out`. The verifier adds `TRANSITIONS`,
+  `EFFECTS` (on at the first/last frame, off just outside), `CAPTIONS` and `FADES`, and its
+  `--sample` now runs four negative controls. Audio is encoded first and its true peak re-measured,
+  tightening a 4×-oversampled limiter if the AAC encode overshot. Bugs caught while building it:
+  ffmpeg's `acrossfade` adds 256 samples per crossfade (replaced), `concat` breaks a following `xfade`
+  with a mismatched timebase (fixed), and a 64 kbps draft preset could not meet its own true-peak
+  check (raised to 192 kbps).
+- **`youtube-editor` reels and viral mode** — `viral_planner.py` turns a transcript into a short-form
+  retention edit with written editor's notes (hook title card + flash + boom on frame 1, jump cuts on
+  every pause, zoom rhythm capping stillness at 1.6–4 s by intensity, punch-ins and pops on numbers
+  and power words, imperative-CTA detection with tightest framing and a ding, karaoke captions,
+  progress bar, music bed, hard loop ending; clean / punchy / insane), and `retention_audit.py`
+  scores any plan 0-100 with fixes and the evidence level of each rule
+  (`references/short_form_retention.md`). New effects: `shake`, `flash`, `glitch`, `bw`,
+  `progress_bar`, `hook`/`outline` text styles in the heaviest installed font, word-by-word `viral`
+  captions (ASS), and eight sound effects synthesized in code (whoosh, boom, bass drop, pop, click,
+  ding, riser, camera) levelled against the normalised voice. The verifier gains `SFX_ALIGN` (each
+  sound located by cross-correlation within 2 ms) and rebuilds time-driven effects by stamping
+  source frames with their output time. On a real 22-second clip both reel intensities passed every
+  check and scored 100/100 (a calmer hand edit scored 70). Found and fixed while building it:
+  drawtext ignores font styles (the heavy face now resolves to a file via fontconfig), karaoke
+  phrases overlapped, hook text overflowed a vertical frame, a mid-sentence "buy" was taken for the
+  call to action, and the caption check did not know about the karaoke hold.
+  **Counters:** skills 398 → 399; tools 766 → 775; refs 877 → 882; agents 123 → 124; commands
+  157 → 160; plugins 104 → 105.
+- **`youtube-editor` genres, beat sync, montages and CC0 packs** — `--style storytelling | motivation |
+  day-in-life` in `viral_planner.py`: moody, teal-orange or warm grades with grain and vignette, the
+  strongest line as a centre quote, risers that end on story turns, shutter clicks on time jumps.
+  `beat_detector.py` (stdlib plus ffmpeg) finds tempo, beats, downbeats and rises, with a metre re-rank
+  that tests ×½…×2 by grid fit: 4.4 ms worst beat error on a synthetic track. On 10 OpenFilm tracks it
+  disagreed with the catalogue BPM 5 times, and in 4 of those its grid landed on onsets more strongly.
+  `--beat-sync` slides jump cuts onto beats inside their pauses and moves hits within 120 ms.
+  `montage_planner.py` joins a folder of clips frame-exact and cuts every shot on a beat. The new
+  verifier check `BEAT_SYNC` proves each cut within half a frame of its beat and the music in place by
+  onset cross-correlation: 9/9 cuts, worst 4.4 ms, music at 0.1 ms, and beats or music shifted 2 frames
+  both fail it. `asset_packs.py` searches and takes OpenFilm's CC0 library (~1,222 tracks, ~5,436
+  sounds, 66 grades) and bakes any grade to a `.cube` in OpenFilm's own order (matrix, saturation,
+  curves). New effects: `look` (vignette, fixed grain, letterbox) and `sfx` from a `file`; `SFX_ALIGN`
+  now starts at a sound's attack. Found and fixed while building it: a 110-sample hop is 9.977 ms, not
+  10 ms (beats drifted 20 ms over 4 s), and the single-pass `select` renderer cannot reorder or reuse
+  shots, so montages now render each piece as its own seeked input. New `/cs-montage-edit` command and
+  references `genre_editing_playbook.md` and `workspace_and_inputs.md` (getting big files in through
+  Google Drive or a link, never re-encoded). **Counters:** tools 775 → 778; refs 882 → 884; commands
+  160 → 161.
+
 ## [2.14.0] - 2026-10-21 — Audit skills, open-source YouTube and plugin-name fixes
 
 Three new plugins from the October audit's new-skill proposals, an open-source-first YouTube
